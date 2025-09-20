@@ -85,4 +85,4 @@ LABEL links='{\
     }'
 LABEL requirements="core >= 1.1"
 
-ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9132"]
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9133"]
