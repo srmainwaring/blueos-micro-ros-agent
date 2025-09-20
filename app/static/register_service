@@ -1,0 +1,10 @@
+{
+    "name":"micro-ROS Agent",
+    "description":"BlueOS Extension to run a micro-ROS Agent",
+    "icon":"mdi-lan-connect",
+    "company":"ArduPilot",
+    "version":"0.0.0",
+    "new_page": false,
+    "webpage": "https://github.com/srmainwaring/blueos-micro-ros-agent",
+    "api":""
+}
