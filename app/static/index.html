@@ -1,0 +1,392 @@
+<!--
+    BlueOS micro-ROS Agent Extension HTML file
+
+    The page includes these elements:
+    - Transport
+    - Port
+    - Verbose
+    - Save Settings button to save the current settings
+    - "Run" / "Stop" button to start or stop the micro-ROS Agent. This setting is persistent
+    - Progress text area to display the status of the latest action
+
+    Each button calls function executed by the main.py python backend
+-->
+
+<html>
+    <head>
+        <title>micro-ROS Agent</title>
+        <link rel="icon" href="/favicon.ico" type="image/x-icon">
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background-color: #0088CC; /* BlueOS blue background */
+                color: white; /* White text for better contrast on blue */
+            }
+            h1 {
+                margin-bottom: 20px;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+            }
+            .card {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                margin-bottom: 20px;
+                background-color: white; /* White card on blue background */
+                color: #333; /* Dark text for contrast on white card */
+            }
+            .card-body {
+                padding: 15px;
+            }
+            .row {
+                display: flex;
+                margin-bottom: 10px;
+            }
+            .col-form-label {
+                flex: 0 0 30%;
+            }
+            .col-sm-9 {
+                flex: 0 0 70%;
+            }
+            .form-control, .form-select {
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                box-sizing: border-box;
+            }
+            .btn {
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                border: none;
+                margin-right: 5px;
+            }
+            .btn-primary {
+                background-color: #0088CC; /* Use BlueOS blue for primary buttons */
+                color: white;
+            }
+            .btn-success {
+                background-color: #28a745;
+                color: white;
+            }
+            .btn-danger {
+                background-color: #dc3545;
+                color: white;
+            }
+            .btn-secondary {
+                background-color: #6c757d;
+                color: white;
+            }
+            textarea {
+                width: 100%;
+                font-family: monospace;
+                resize: vertical; /* Allow vertical resizing only, prevent horizontal resizing */
+                max-width: 100%; /* Ensure textarea doesn't exceed its container */
+                box-sizing: border-box; /* Include padding and border in the element's width */
+            }
+            .mb-3 {
+                margin-bottom: 15px;
+            }
+            .text-muted {
+                color: #6c757d;
+                font-size: 0.875em;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>micro-ROS Agent</h1>
+            <div class="card">
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <!-- Transport input -->
+                        <label for="transport" class="col-form-label">Transport:</label>
+                        <div class="col-sm-9">
+                            <input type="text" class="form-control" id="transport">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <!-- Port input -->
+                        <label for="port" class="col-form-label">Port:</label>
+                        <div class="col-sm-9">
+                            <input type="number" class="form-control" id="port">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <!-- Verbose -->
+                        <label for="verbose" class="col-form-label">Verbose:</label>
+                        <div class="col-sm-9">
+                            <input type="number" class="form-control" id="verbose">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <!-- Action buttons -->
+                        <div class="col-sm-9" style="margin-left: auto;">
+                            <button id="saveSettingsBtn" class="btn btn-secondary">Save Settings</button>
+                            <button id="loadSettingsBtn" class="btn btn-secondary">Load Settings</button>
+                            <button id="runBtn" class="btn btn-success">Run</button>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <!-- Progress text area -->
+                        <label for="progressLog" class="col-form-label">Progress:</label>
+                        <div class="col-sm-9">
+                            <textarea id="progressLog" class="form-control" rows="10" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // micro-ROS Agent management logic
+            document.addEventListener('DOMContentLoaded', async function() {
+                // get document elements which have no listeners
+                const transportInput = document.getElementById('transport');
+                const portInput = document.getElementById('port');
+                const verboseInput = document.getElementById('verbose');
+
+                // Save settings button event listener
+                const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+                saveSettingsBtn.addEventListener('click', saveSettings);
+
+                // Load settings button event listener
+                const loadSettingsBtn = document.getElementById('loadSettingsBtn');
+                loadSettingsBtn.addEventListener('click', loadSavedSettings);
+
+                // Run button event listener
+                const runBtn = document.getElementById('runBtn');
+                runBtn.addEventListener('click', toggleAgent);
+
+                // Load saved settings
+                loadSavedSettings();
+
+                // Check initial micro-ROS Agent status
+                checkAgentStatus();
+
+                // Save settings button event listener
+                function saveSettings() {
+                    const transport = transportInput.value;
+                    const port = portInput.value;
+                    const verbose = verboseInput.value;
+
+                    const params = new URLSearchParams({
+                        transport: transport,
+                        port: port,
+                        verbose: verbose
+                      });
+
+                    fetch(`/micro-ros-agent/save-settings?${params.toString()}`, {
+                        method: 'POST'
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                progressLog.value = "Settings saved successfully\n";
+                                progressLog.scrollTop = progressLog.scrollHeight;
+                            } else {
+                                progressLog.value = "Failed to save settings\n";
+                                progressLog.scrollTop = progressLog.scrollHeight;
+                            }
+                        })
+                        .catch(error => {
+                            progressLog.value = "Error saving settings\n";
+                            progressLog.scrollTop = progressLog.scrollHeight;
+                            console.error('Error:', error);
+                        });
+                }
+
+                // Load saved settings
+                function loadSavedSettings() {
+                    fetch('/micro-ros-agent/get-settings', { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                progressLog.value = "Settings loaded successfully\n";
+                                progressLog.scrollTop = progressLog.scrollHeight;
+
+                                // Set transport
+                                if (data.micro_ros_agent && data.micro_ros_agent.transport !== undefined) {
+                                    transportInput.value = data.micro_ros_agent.transport;
+                                }
+
+                                // Set port
+                                if (data.micro_ros_agent && data.micro_ros_agent.port !== undefined) {
+                                    portInput.value = data.micro_ros_agent.port;
+                                }
+
+                                // Set verbose
+                                if (data.micro_ros_agent && data.micro_ros_agent.verbose !== undefined) {
+                                    verboseInput.value = data.micro_ros_agent.verbose;
+                                }
+
+                              } else {
+                                progressLog.value = "Failed to load settings\n";
+                                progressLog.scrollTop = progressLog.scrollHeight;
+                            }
+                        })
+                        .catch(error => {
+                            progressLog.value = "Error loading settings\n";
+                            progressLog.scrollTop = progressLog.scrollHeight;
+                            console.error('Error:', error);
+                        });
+                }
+
+                // Toggle micro-ROS Agent function
+                function toggleAgent() {
+                    // Check if the micro-ROS Agent is currently running
+                    fetch('/micro-ros-agent/status', { method: 'GET' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.running) {
+                                // Stop the micro-ROS Agent
+                                stopAgent();
+                            } else {
+                                // Start the micro-ROS Agent
+                                startAgent();
+                            }
+                        })
+                        .catch(error => {
+                            progressLog.value += `Error checking status: ${error}\n`;
+                            progressLog.scrollTop = progressLog.scrollHeight;
+                        });
+                }
+
+                // Start the micro-ROS Agent
+                function startAgent() {
+                    progressLog.value = `Starting the micro-ROS Agent ...\n`;
+                    progressLog.scrollTop = progressLog.scrollHeight;
+
+                    fetch(`/micro-ros-agent/start`, {
+                        method: 'POST'
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                progressLog.value += "the micro-ROS Agent started successfully\n";
+                                runBtn.textContent = "Stop";
+                                runBtn.className = "btn btn-danger";
+                                // Save the enabled state
+                                saveAgentState(true);
+                            } else {
+                                // failed to start, print error message and restore Run button
+                                progressLog.value += `Failed to start the micro-ROS Agent: ${data.message}\n`;
+                                runBtn.textContent = "Run";
+                                runBtn.className = "btn btn-success";
+                            }
+                            progressLog.scrollTop = progressLog.scrollHeight;
+                        })
+                        .catch(error => {
+                            // failed to start, print error message and restore Run button
+                            progressLog.value += `Error starting the micro-ROS Agent: ${error}\n`;
+                            runBtn.textContent = "Run";
+                            runBtn.className = "btn btn-success";
+                            progressLog.scrollTop = progressLog.scrollHeight;
+                        });
+                }
+
+                // Stop the micro-ROS Agent
+                function stopAgent() {
+                    progressLog.value = "Stopping the micro-ROS Agent ...\n";
+                    progressLog.scrollTop = progressLog.scrollHeight;
+
+                    fetch('/micro-ros-agent/stop', { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                progressLog.value += "the micro-ROS Agent stopped\n";
+                                runBtn.textContent = "Run";
+                                runBtn.className = "btn btn-success";
+                                // Save the disabled state
+                                saveAgentState(false);
+                            } else {
+                                progressLog.value += `Failed to stop the micro-ROS Agent: ${data.message}\n`;
+                            }
+                            progressLog.scrollTop = progressLog.scrollHeight;
+                        })
+                        .catch(error => {
+                            progressLog.value += `Error stopping the micro-ROS Agent: ${error}\n`;
+                            progressLog.scrollTop = progressLog.scrollHeight;
+                        });
+                }
+
+                // Check the micro-ROS Agent status and update button accordingly
+                function checkAgentStatus() {
+                    // First check the saved enabled state from settings
+                    fetch('/micro-ros-agent/get-enabled-state', { method: 'GET' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                if (data.enabled) {
+                                    // the micro-ROS Agent should be enabled, check if it's actually running
+                                    fetch('/micro-ros-agent/status', { method: 'GET' })
+                                        .then(response => response.json())
+                                        .then(statusData => {
+                                            if (statusData.running) {
+                                                runBtn.textContent = "Stop";
+                                                runBtn.className = "btn btn-danger";
+                                            } else {
+                                                // failed to start, print error message and restore Run button
+                                                runBtn.textContent = "Run";
+                                                runBtn.className = "btn btn-success";
+                                                progressLog.value += "the micro-ROS Agent was enabled but failed to start automatically\n";
+                                                progressLog.scrollTop = progressLog.scrollHeight;
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Error checking the micro-ROS Agent runtime status:', error);
+                                        });
+                                } else {
+                                    // the micro-ROS Agent should be disabled
+                                    runBtn.textContent = "Run";
+                                    runBtn.className = "btn btn-success";
+                                }
+                            } else {
+                                console.error('Failed to get the micro-ROS Agent enabled state:', data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error checking the micro-ROS Agent enabled state:', error);
+                            // Fallback to just checking runtime status
+                            fetch('/micro-ros-agent/status', { method: 'GET' })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.running) {
+                                        runBtn.textContent = "Stop";
+                                        runBtn.className = "btn btn-danger";
+                                    } else {
+                                        runBtn.textContent = "Run";
+                                        runBtn.className = "btn btn-success";
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error checking the micro-ROS Agent status:', error);
+                                });
+                        });
+                }
+
+                // Save the micro-ROS Agent enabled state to settings
+                function saveAgentState(enabled) {
+                    fetch(`/micro-ros-agent/save-enabled-state?enabled=${enabled}`, {
+                        method: 'POST'
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                console.log(`the micro-ROS Agent state saved: ${enabled}`);
+                            } else {
+                                console.error('Failed to save the micro-ROS Agent state:', data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error saving the micro-ROS Agent state:', error);
+                        });
+                }
+            });
+        </script>
+    </body>
+</html>

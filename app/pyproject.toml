@@ -1,0 +1,14 @@
+[project]
+name = "blueos-micro-ros-agent-extension"
+version = "0.0.0"
+description = "BlueOS micro-ROS Agent Extension"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License (GPLv3)",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "requests",
+    "fastapi",
+    "uvicorn[standard]"
+]
